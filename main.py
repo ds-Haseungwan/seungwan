@@ -78,42 +78,11 @@ def plot_growth_rate_by_temperature(df):
     st.plotly_chart(fig)
 
 # Tab1: 온도-ec, 온도-ph, ec-ph 상관관계
-if school_name == "전체":
+def tab1(school_name):
     st.title("극지 식물의 온도별 성장률")
     st.write("### 온도, EC, pH 간의 상관 관계")
 
-    if "송도고" in data:
-        school_data = data["송도고"]
-        st.write("### 송도고 데이터")
-        plot_temperature_ec_corr(school_data)
-        plot_temperature_ph_corr(school_data)
-        plot_ec_ph_corr(school_data)
-
-# Tab2: 온도별 성장률
-if school_name == "온도별 성장률":
-    st.title("온도별 성장률")
-
-    if "송도고" in data:
-        school_data = data["송도고"]
-        st.write("### 송도고 데이터")
-        plot_growth_rate_by_temperature(school_data)
-
-# Tab3: 극지생물이지만 상온 환경에서도 잘 자람
-if school_name == "극지생물이지만 상온 환경에서도 잘 자람":
-    st.title("극지 생물이지만 상온 환경에서도 잘 자람")
-    st.write("극지 식물은 상온 환경에서도 자라나며, 온도에 따른 다양한 변화를 보여줍니다.")
-
-# XLSX 다운로드 버튼
-def generate_xlsx(df):
-    buffer = io.BytesIO()
-    df.to_excel(buffer, index=False, engine="openpyxl")
-    buffer.seek(0)
-    return buffer
-
-# 다운로드 버튼
-st.download_button(
-    label="데이터 다운로드",
-    data=generate_xlsx(df),
-    file_name="data.xlsx",
-    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-)
+    if school_name in data:
+        school_data = data[school_name]
+        st.write(f"### {school_name} 데이터")
+        plot_temperature_ec_corr(school_d
