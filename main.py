@@ -16,16 +16,13 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# EC별 학교 정보
-school_info = {
-    "송도고": {"EC": 1.0, "color": "blue", "students": 29},
-    "하늘고": {"EC": 2.0, "color": "green", "students": 45},
-    "아라고": {"EC": 4.0, "color": "orange", "students": 106},
-    "동산고": {"EC": 8.0, "color": "red", "students": 58},
-}
-
 # 파일 경로 설정
 DATA_PATH = Path("data")
+
+# 파일 인식 함수
+def normalize_filename(filename: str) -> str:
+    """파일명 정상화 (NFC)"""
+    return unicodedata.normalize("NFC", filename)
 
 # 데이터 로딩 함수
 @st.cache_data
@@ -33,7 +30,7 @@ def load_data():
     data = {}
     for file in DATA_PATH.iterdir():
         if file.suffix == '.csv':
-            school_name = file.stem
+            school_name = normalize_filename(file.stem)
             data[school_name] = pd.read_csv(file)
         elif file.suffix == '.xlsx':
             data["생육결과"] = pd.read_excel(file, sheet_name=None)
@@ -45,44 +42,68 @@ data = load_data()
 # 학교 선택 드롭다운
 school_name = st.sidebar.selectbox("학교 선택", ["전체", "송도고", "하늘고", "아라고", "동산고"])
 
-# 📖 실험 개요 탭
+# 📊 데이터 처리 및 시각화 함수
+def plot_temperature_ec_corr(df):
+    fig = make_subplots(rows=1, cols=1)
+    
+    # 온도-EC 상관 관계 그래프
+    fig.add_trace(go.Scatter(x=df["temperature"], y=df["ec"], mode="markers", name="온도 vs EC"))
+    fig.update_layout(title="온도와 EC의 상관 관계", font=dict(family="Malgun Gothic, sans-serif"))
+    st.plotly_chart(fig)
+
+def plot_temperature_ph_corr(df):
+    fig = make_subplots(rows=1, cols=1)
+    
+    # 온도-pH 상관 관계 그래프
+    fig.add_trace(go.Scatter(x=df["temperature"], y=df["ph"], mode="markers", name="온도 vs pH"))
+    fig.update_layout(title="온도와 pH의 상관 관계", font=dict(family="Malgun Gothic, sans-serif"))
+    st.plotly_chart(fig)
+
+def plot_ec_ph_corr(df):
+    fig = make_subplots(rows=1, cols=1)
+    
+    # EC-pH 상관 관계 그래프
+    fig.add_trace(go.Scatter(x=df["ec"], y=df["ph"], mode="markers", name="EC vs pH"))
+    fig.update_layout(title="EC와 pH의 상관 관계", font=dict(family="Malgun Gothic, sans-serif"))
+    st.plotly_chart(fig)
+
+# 온도별 성장률 계산 및 시각화
+def plot_growth_rate_by_temperature(df):
+    fig = make_subplots(rows=1, cols=1)
+    
+    # 성장률을 온도별로 시각화 (생중량 / 시간)
+    df["growth_rate"] = df["생중량(g)"] / df["time"]  # 성장률 예시 계산 (시간 대비 생중량)
+    fig.add_trace(go.Scatter(x=df["temperature"], y=df["growth_rate"], mode="lines+markers", name="성장률"))
+    fig.update_layout(title="온도별 성장률", font=dict(family="Malgun Gothic, sans-serif"))
+    st.plotly_chart(fig)
+
+# Tab1: 온도-ec, 온도-ph, ec-ph 상관관계
 if school_name == "전체":
-    st.title("🌱 극지식물 최적 EC 농도 연구")
-    st.write("### 연구 배경 및 목적")
-    st.write("각 학교의 EC 조건에 맞춰 극지식물의 생육 결과를 분석합니다.")
-    st.write("### 학교별 EC 조건")
-    ec_data = pd.DataFrame(school_info).T
-    st.table(ec_data[['EC', 'students', 'color']])
+    st.title("극지 식물의 온도별 성장률")
+    st.write("### 온도, EC, pH 간의 상관 관계")
 
-    # 주요 지표 카드
-    st.write("### 주요 지표")
-    st.metric("총 개체수", sum(school_info[school]['students'] for school in school_info))
-    st.metric("최적 EC", "2.0 (하늘고)")
-    
-# 환경 데이터 탭
-elif school_name == "🌡️ 환경 데이터":
-    st.title("환경 데이터")
-    
-    # 학교별 환경 평균 비교
-    if school_name in data:
-        school_data = data[school_name]
-        st.write(f"### {school_name} 환경 데이터")
-        
-        # 그래프
-        fig = make_subplots(rows=2, cols=2)
-        
-        fig.add_trace(go.Bar(x=["온도"], y=school_data["temperature"], name="온도"))
-        fig.add_trace(go.Bar(x=["습도"], y=school_data["humidity"], name="습도"))
-        fig.add_trace(go.Bar(x=["pH"], y=school_data["ph"], name="pH"))
-        
-        fig.update_layout(height=600, title_text="온도/습도/PH/EC 비교")
-        st.plotly_chart(fig)
+    if "송도고" in data:
+        school_data = data["송도고"]
+        st.write("### 송도고 데이터")
+        plot_temperature_ec_corr(school_data)
+        plot_temperature_ph_corr(school_data)
+        plot_ec_ph_corr(school_data)
 
-# 생육 결과
-elif school_name == "📊 생육 결과":
-    st.write("생육 결과")
+# Tab2: 온도별 성장률
+if school_name == "온도별 성장률":
+    st.title("온도별 성장률")
 
-# 다운로드 버튼
+    if "송도고" in data:
+        school_data = data["송도고"]
+        st.write("### 송도고 데이터")
+        plot_growth_rate_by_temperature(school_data)
+
+# Tab3: 극지생물이지만 상온 환경에서도 잘 자람
+if school_name == "극지생물이지만 상온 환경에서도 잘 자람":
+    st.title("극지 생물이지만 상온 환경에서도 잘 자람")
+    st.write("극지 식물은 상온 환경에서도 자라나며, 온도에 따른 다양한 변화를 보여줍니다.")
+
+# XLSX 다운로드 버튼
 def generate_xlsx(df):
     buffer = io.BytesIO()
     df.to_excel(buffer, index=False, engine="openpyxl")
